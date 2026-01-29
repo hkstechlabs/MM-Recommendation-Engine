@@ -1,0 +1,9 @@
+{"timestamp":"2026-01-29T13:48:56.637Z","level":"INFO","message":"Starting MM sync at 2026-01-29T13:48:56.637Z"}
+{"timestamp":"2026-01-29T13:48:56.637Z","level":"INFO","message":"Testing database connection and schema..."}
+{"timestamp":"2026-01-29T13:48:59.110Z","level":"ERROR","message":"Database connection test failed","data":{"error":"Could not query the database for the schema cache. Retrying."}}
+{"timestamp":"2026-01-29T13:56:26.360Z","level":"INFO","message":"Starting MM sync at 2026-01-29T13:56:26.360Z"}
+{"timestamp":"2026-01-29T13:56:26.360Z","level":"INFO","message":"Testing database connection and schema..."}
+{"timestamp":"2026-01-29T13:56:28.350Z","level":"ERROR","message":"Database connection test failed","data":{"error":"Could not query the database for the schema cache. Retrying."}}
+{"timestamp":"2026-01-29T14:00:52.794Z","level":"INFO","message":"Starting MM sync at 2026-01-29T14:00:52.794Z"}
+{"timestamp":"2026-01-29T14:00:52.794Z","level":"INFO","message":"Testing database connection and schema..."}
+{"timestamp":"2026-01-29T14:00:55.018Z","level":"ERROR","message":"Database connection test failed","data":{"error":"Could not query the database for the schema cache. Retrying."}}
