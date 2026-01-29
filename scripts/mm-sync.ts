@@ -1,4 +1,4 @@
-import { createScriptClient } from '@/lib/supabase/script-client'
+import { createScriptClient, createServiceClient } from '@/lib/supabase/script-client'
 import { config } from 'dotenv'
 import * as fs from 'fs'
 import * as path from 'path'
@@ -11,8 +11,8 @@ const MM_SHOPIFY_URL = 'https://ozmobiles-com-au.myshopify.com'
 const MM_ACCESS_TOKEN = process.env.MM_ACCESS_TOKEN
 const MM_API_VERSION = '2026-01'
 
-// Use the script client for Node.js environment
-const supabase = createScriptClient()
+// Use the service client for Node.js environment with admin privileges
+const supabase = createServiceClient()
 
 interface ShopifyProduct {
   id: number
@@ -20,7 +20,7 @@ interface ShopifyProduct {
   vendor: string
   product_type: string
   created_at: string
-  tags: string[]
+  tags: string | string[]
   variants: ShopifyVariant[]
 }
 
@@ -252,7 +252,7 @@ class MMSyncService {
   async fetchAllProducts(): Promise<ShopifyProduct[]> {
     this.logger.info('Starting to fetch all products from MM Shopify...')
     const allProducts: ShopifyProduct[] = []
-    let nextUrl: string | null = `${MM_SHOPIFY_URL}/admin/api/${MM_API_VERSION}/products.json?limit=250`
+    let nextUrl: string | null = `${MM_SHOPIFY_URL}/admin/api/${MM_API_VERSION}/products.json?limit=250&types=phone&vendor=apple&status=active`
     let pageCount = 0
 
     const headers = {
@@ -406,6 +406,17 @@ class MMSyncService {
    */
   async createProduct(shopifyProduct: ShopifyProduct): Promise<any> {
     try {
+      // Ensure tags is properly formatted as an array
+      let tagsArray: string[] = []
+      if (shopifyProduct.tags) {
+        if (Array.isArray(shopifyProduct.tags)) {
+          tagsArray = shopifyProduct.tags
+        } else if (typeof shopifyProduct.tags === 'string') {
+          // Handle case where tags might be a comma-separated string
+          tagsArray = shopifyProduct.tags.split(',').map(tag => tag.trim())
+        }
+      }
+
       const productData = {
         title: shopifyProduct.title,
         vendor: shopifyProduct.vendor,
@@ -413,7 +424,7 @@ class MMSyncService {
         product_created_at: shopifyProduct.created_at,
         product_id: shopifyProduct.id, // bigint field for Shopify product ID
         status: 'active',
-        tags: shopifyProduct.tags || []
+        tags: tagsArray
       }
 
       this.logger.info(`Creating new product: ${shopifyProduct.title}`, { 
@@ -457,13 +468,24 @@ class MMSyncService {
    */
   async updateProduct(existingProduct: any, shopifyProduct: ShopifyProduct): Promise<any> {
     try {
+      // Ensure tags is properly formatted as an array
+      let tagsArray: string[] = []
+      if (shopifyProduct.tags) {
+        if (Array.isArray(shopifyProduct.tags)) {
+          tagsArray = shopifyProduct.tags
+        } else if (typeof shopifyProduct.tags === 'string') {
+          // Handle case where tags might be a comma-separated string
+          tagsArray = shopifyProduct.tags.split(',').map(tag => tag.trim())
+        }
+      }
+
       const updateData = {
         title: shopifyProduct.title,
         vendor: shopifyProduct.vendor,
         product_type: shopifyProduct.product_type,
         product_created_at: shopifyProduct.created_at,
         product_id: shopifyProduct.id,
-        tags: shopifyProduct.tags || []
+        tags: tagsArray
       }
 
       // Check if update is needed
@@ -473,7 +495,7 @@ class MMSyncService {
         existingProduct.product_type !== shopifyProduct.product_type ||
         existingProduct.product_created_at !== shopifyProduct.created_at ||
         existingProduct.product_id !== shopifyProduct.id ||
-        JSON.stringify(existingProduct.tags || []) !== JSON.stringify(shopifyProduct.tags || [])
+        JSON.stringify(existingProduct.tags || []) !== JSON.stringify(tagsArray)
 
       if (!needsUpdate) {
         this.logger.info(`No update needed for product: ${shopifyProduct.title}`, { 
