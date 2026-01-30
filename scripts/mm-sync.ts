@@ -252,7 +252,7 @@ class MMSyncService {
   async fetchAllProducts(): Promise<ShopifyProduct[]> {
     this.logger.info('Starting to fetch all products from MM Shopify...')
     const allProducts: ShopifyProduct[] = []
-    let nextUrl: string | null = `${MM_SHOPIFY_URL}/admin/api/${MM_API_VERSION}/products.json?limit=250&types=phone&vendor=apple&status=active`
+    let nextUrl: string | null = `${MM_SHOPIFY_URL}/admin/api/${MM_API_VERSION}/products.json?limit=250&product_type=phone&vendor=apple&status=active`
     let pageCount = 0
 
     const headers = {
