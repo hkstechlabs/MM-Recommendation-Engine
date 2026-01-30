@@ -1,6 +1,5 @@
 -- WARNING: This schema is for context only and is not meant to be run.
 -- Table order and constraints may not be valid for execution.
-
 CREATE TABLE public.competitors (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
   created_at timestamp with time zone NOT NULL DEFAULT now(),
@@ -9,6 +8,8 @@ CREATE TABLE public.competitors (
   total_executiosn numeric,
   CONSTRAINT competitors_pkey PRIMARY KEY (id)
 );
+
+
 CREATE TABLE public.executions (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
   created_at timestamp with time zone NOT NULL DEFAULT now(),
@@ -21,6 +22,8 @@ CREATE TABLE public.executions (
   CONSTRAINT executions_pkey PRIMARY KEY (id),
   CONSTRAINT executions_id_fkey FOREIGN KEY (id) REFERENCES public.competitors(id)
 );
+
+
 CREATE TABLE public.products (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
   created_at timestamp with time zone NOT NULL DEFAULT now(),
@@ -33,6 +36,8 @@ CREATE TABLE public.products (
   product_id bigint,
   CONSTRAINT products_pkey PRIMARY KEY (id)
 );
+
+
 CREATE TABLE public.scraped_data (
   id uuid NOT NULL DEFAULT uuid_generate_v4(),
   price text,
@@ -49,10 +54,12 @@ CREATE TABLE public.scraped_data (
   CONSTRAINT scraped_data_product_id_fkey FOREIGN KEY (product_id) REFERENCES public.products(id),
   CONSTRAINT scraped_data_variant_id_fkey FOREIGN KEY (variant_id) REFERENCES public.variants(id)
 );
+
+
 CREATE TABLE public.variants (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
   created_at timestamp with time zone NOT NULL DEFAULT now(),
-  product_id bigint,
+  product_id uuid,
   variant_id bigint,
   title text,
   price text,
@@ -71,5 +78,6 @@ CREATE TABLE public.variants (
   inventory_quantity integer,
   old_inventory_quantity integer,
   image_id bigint,
-  CONSTRAINT variants_pkey PRIMARY KEY (id)
+  CONSTRAINT variants_pkey PRIMARY KEY (id),
+  CONSTRAINT variants_product_id_fkey FOREIGN KEY (product_id) REFERENCES public.products(id) ON DELETE CASCADE
 );
