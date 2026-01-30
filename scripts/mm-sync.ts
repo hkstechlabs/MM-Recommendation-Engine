@@ -29,8 +29,19 @@ interface ShopifyVariant {
   title: string
   price: string
   sku: string
+  position: number
+  compare_at_price: string | null
   inventory_quantity: number
+  old_inventory_quantity: number
   created_at: string
+  updated_at: string
+  taxable: boolean
+  fulfillment_service: string
+  requires_shipping: boolean
+  weight: number
+  weight_unit: string
+  inventory_item_id: number
+  image_id: number | null
 }
 
 interface SyncStats {
@@ -175,9 +186,9 @@ class MMSyncService {
 
       this.logger.success('Test product inserted successfully', { productId: insertedProduct.id })
 
-      // Insert test variant
+      // Insert test variant with product UUID foreign key
       const testVariant = {
-        product_id: testProduct.product_id,
+        product_id: insertedProduct.id, // UUID - Foreign key to products table
         variant_id: 999999999,
         title: 'Test Variant',
         price: '99.99',
@@ -200,18 +211,17 @@ class MMSyncService {
 
       if (variantError) {
         this.logger.error('Test variant insertion failed', { error: variantError.message })
-        // Clean up test product
+        // Clean up test product (variants will cascade delete)
         await supabase.from('products').delete().eq('id', insertedProduct.id)
         return false
       }
 
       this.logger.success('Test variant inserted successfully', { variantId: insertedVariant.id })
 
-      // Clean up test data
+      // Clean up test data (variants will cascade delete with product)
       this.logger.info('Cleaning up test data...')
-      await supabase.from('variants').delete().eq('id', insertedVariant.id)
       await supabase.from('products').delete().eq('id', insertedProduct.id)
-      this.logger.success('Test data cleaned up successfully')
+      this.logger.success('Test data cleaned up successfully (variants cascade deleted)')
 
       return true
     } catch (error) {
@@ -252,7 +262,7 @@ class MMSyncService {
   async fetchAllProducts(): Promise<ShopifyProduct[]> {
     this.logger.info('Starting to fetch all products from MM Shopify...')
     const allProducts: ShopifyProduct[] = []
-    let nextUrl: string | null = `${MM_SHOPIFY_URL}/admin/api/${MM_API_VERSION}/products.json?limit=250&product_type=phone&vendor=apple&status=active`
+    let nextUrl: string | null = `${MM_SHOPIFY_URL}/admin/api/${MM_API_VERSION}/products.json?limit=5&product_type=phone&vendor=apple&status=active`
     let pageCount = 0
 
     const headers = {
@@ -553,24 +563,24 @@ class MMSyncService {
   }
 
   /**
-   * Get existing variants for a product - using product_id (bigint)
+   * Get existing variants for a product - using product UUID
    */
-  async getExistingVariants(shopifyProductId: number): Promise<any[]> {
+  async getExistingVariants(productUuid: string): Promise<any[]> {
     try {
       const { data, error } = await supabase
         .from('variants')
         .select('*')
-        .eq('product_id', shopifyProductId)
+        .eq('product_id', productUuid)
 
       if (error) {
-        this.logger.error(`Error fetching variants for product ${shopifyProductId}`, { error: error.message })
+        this.logger.error(`Error fetching variants for product ${productUuid}`, { error: error.message })
         return []
       }
 
-      this.logger.info(`Found ${data?.length || 0} existing variants for product ${shopifyProductId}`)
+      this.logger.info(`Found ${data?.length || 0} existing variants for product ${productUuid}`)
       return data || []
     } catch (error) {
-      this.logger.error(`Exception fetching variants for product ${shopifyProductId}`, { error: (error as Error).message })
+      this.logger.error(`Exception fetching variants for product ${productUuid}`, { error: (error as Error).message })
       return []
     }
   }
@@ -578,34 +588,44 @@ class MMSyncService {
   /**
    * Create new variant in Supabase - optimized for schema
    */
-  async createVariant(shopifyVariant: ShopifyVariant, shopifyProduct: ShopifyProduct): Promise<any> {
+  async createVariant(shopifyVariant: ShopifyVariant, productUuid: string): Promise<any> {
     try {
       const titleText = shopifyVariant.title || ''
       const skuText = shopifyVariant.sku || ''
       const combinedText = `${titleText} ${skuText}`
 
       const variantData = {
-        product_id: shopifyProduct.id, // bigint - Shopify product ID
+        product_id: productUuid, // UUID - Foreign key to products table
         variant_id: shopifyVariant.id, // bigint - Shopify variant ID
         title: shopifyVariant.title,
         price: shopifyVariant.price,
         sku: shopifyVariant.sku,
+        position: shopifyVariant.position,
+        compare_at_price: shopifyVariant.compare_at_price,
         storage: this.extractStorageFromText(combinedText),
         condition: this.extractConditionFromText(combinedText),
         color: this.extractColourFromText(combinedText),
         inventory_quantity: shopifyVariant.inventory_quantity,
-        position: 1, // Default position
-        taxable: true, // Default taxable
-        requires_shipping: true // Default requires shipping
+        old_inventory_quantity: shopifyVariant.old_inventory_quantity,
+        taxable: shopifyVariant.taxable,
+        fulfillment_service: shopifyVariant.fulfillment_service,
+        requires_shipping: shopifyVariant.requires_shipping,
+        weight: shopifyVariant.weight,
+        weight_unit: shopifyVariant.weight_unit,
+        inventory_item_id: shopifyVariant.inventory_item_id,
+        image_id: shopifyVariant.image_id
       }
 
       this.logger.info(`Creating variant: ${shopifyVariant.title || shopifyVariant.sku}`, { 
         shopifyVariantId: shopifyVariant.id,
-        shopifyProductId: shopifyProduct.id,
+        productUuid: productUuid,
         extractedData: {
           storage: variantData.storage,
           condition: variantData.condition,
-          color: variantData.color
+          color: variantData.color,
+          weight: variantData.weight,
+          weight_unit: variantData.weight_unit,
+          image_id: variantData.image_id
         }
       })
 
@@ -654,7 +674,17 @@ class MMSyncService {
         title: shopifyVariant.title,
         price: shopifyVariant.price,
         sku: shopifyVariant.sku,
+        position: shopifyVariant.position,
+        compare_at_price: shopifyVariant.compare_at_price,
         inventory_quantity: shopifyVariant.inventory_quantity,
+        old_inventory_quantity: shopifyVariant.old_inventory_quantity,
+        taxable: shopifyVariant.taxable,
+        fulfillment_service: shopifyVariant.fulfillment_service,
+        requires_shipping: shopifyVariant.requires_shipping,
+        weight: shopifyVariant.weight,
+        weight_unit: shopifyVariant.weight_unit,
+        inventory_item_id: shopifyVariant.inventory_item_id,
+        image_id: shopifyVariant.image_id,
         storage: existingVariant.storage || this.extractStorageFromText(combinedText),
         condition: existingVariant.condition || this.extractConditionFromText(combinedText),
         color: existingVariant.color || this.extractColourFromText(combinedText)
@@ -665,7 +695,17 @@ class MMSyncService {
         existingVariant.title !== shopifyVariant.title ||
         existingVariant.price !== shopifyVariant.price ||
         existingVariant.sku !== shopifyVariant.sku ||
+        existingVariant.position !== shopifyVariant.position ||
+        existingVariant.compare_at_price !== shopifyVariant.compare_at_price ||
         existingVariant.inventory_quantity !== shopifyVariant.inventory_quantity ||
+        existingVariant.old_inventory_quantity !== shopifyVariant.old_inventory_quantity ||
+        existingVariant.taxable !== shopifyVariant.taxable ||
+        existingVariant.fulfillment_service !== shopifyVariant.fulfillment_service ||
+        existingVariant.requires_shipping !== shopifyVariant.requires_shipping ||
+        existingVariant.weight !== shopifyVariant.weight ||
+        existingVariant.weight_unit !== shopifyVariant.weight_unit ||
+        existingVariant.inventory_item_id !== shopifyVariant.inventory_item_id ||
+        existingVariant.image_id !== shopifyVariant.image_id ||
         (!existingVariant.storage && updateData.storage) ||
         (!existingVariant.condition && updateData.condition) ||
         (!existingVariant.color && updateData.color)
@@ -719,7 +759,17 @@ class MMSyncService {
     if (existing.title !== shopify.title) changes.push('title')
     if (existing.price !== shopify.price) changes.push('price')
     if (existing.sku !== shopify.sku) changes.push('sku')
+    if (existing.position !== shopify.position) changes.push('position')
+    if (existing.compare_at_price !== shopify.compare_at_price) changes.push('compare_at_price')
     if (existing.inventory_quantity !== shopify.inventory_quantity) changes.push('inventory_quantity')
+    if (existing.old_inventory_quantity !== shopify.old_inventory_quantity) changes.push('old_inventory_quantity')
+    if (existing.taxable !== shopify.taxable) changes.push('taxable')
+    if (existing.fulfillment_service !== shopify.fulfillment_service) changes.push('fulfillment_service')
+    if (existing.requires_shipping !== shopify.requires_shipping) changes.push('requires_shipping')
+    if (existing.weight !== shopify.weight) changes.push('weight')
+    if (existing.weight_unit !== shopify.weight_unit) changes.push('weight_unit')
+    if (existing.inventory_item_id !== shopify.inventory_item_id) changes.push('inventory_item_id')
+    if (existing.image_id !== shopify.image_id) changes.push('image_id')
     if (!existing.storage && updateData.storage) changes.push('storage')
     if (!existing.condition && updateData.condition) changes.push('condition')
     if (!existing.color && updateData.color) changes.push('color')
@@ -754,8 +804,8 @@ class MMSyncService {
       return
     }
 
-    // Get existing variants using Shopify product ID
-    const existingVariants = await this.getExistingVariants(shopifyProduct.id)
+    // Get existing variants using product UUID
+    const existingVariants = await this.getExistingVariants(supabaseProduct.id)
     const existingVariantMap = new Map()
     existingVariants.forEach(variant => {
       existingVariantMap.set(variant.variant_id, variant)
@@ -769,8 +819,8 @@ class MMSyncService {
         // Update existing variant
         await this.updateVariant(existingVariant, shopifyVariant)
       } else {
-        // Create new variant
-        await this.createVariant(shopifyVariant, shopifyProduct)
+        // Create new variant with product UUID
+        await this.createVariant(shopifyVariant, supabaseProduct.id)
       }
     }
 
