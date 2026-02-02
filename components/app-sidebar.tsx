@@ -1,12 +1,18 @@
 "use client";
 
 import * as React from "react";
-import { GalleryVerticalEnd } from "lucide-react";
-import { usePathname } from "next/navigation";
+import {
+  GalleryVerticalEnd,
+  FolderOpen,
+  Building2,
+  LogOut,
+} from "lucide-react";
+import { usePathname, useSearchParams } from "next/navigation";
 
 import {
   Sidebar,
   SidebarContent,
+  SidebarFooter,
   SidebarGroup,
   SidebarHeader,
   SidebarMenu,
@@ -17,29 +23,35 @@ import {
   SidebarMenuSubItem,
   SidebarRail,
 } from "@/components/ui/sidebar";
+import { LogoutButton } from "@/components/logout-button";
 
-// This is sample data.
-const data = {
-  navMain: [
-    {
-      title: "Recommendations",
-      url: "/dashboard/recommendations",
-      items: [
-        {
-          title: "Installation",
-          url: "#",
-        },
-        {
-          title: "Project Structure",
-          url: "#",
-        },
-      ],
-    },
-  ],
-};
+
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const selectedCollection = searchParams.get('collection');
+
+  // Update the brands URL to preserve collection parameter
+  const brandsUrl = selectedCollection 
+    ? `/dashboard/collections/brands?collection=${encodeURIComponent(selectedCollection)}`
+    : '/dashboard/collections/brands';
+
+  // Update data with dynamic brands URL
+  const data = {
+    navMain: [
+      {
+        title: "Collections",
+        url: "/dashboard/collections",
+        icon: FolderOpen,
+        items: selectedCollection ? [{ 
+          title: "Brands", 
+          url: brandsUrl, 
+          icon: Building2 
+        }] : [],
+      },
+    ],
+  };
 
   return (
     <Sidebar {...props}>
@@ -52,7 +64,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                   <GalleryVerticalEnd className="size-4" />
                 </div>
                 <div className="flex flex-col gap-0.5 leading-none">
-                  <span className="font-medium">Documentation</span>
+                  <span className="font-medium">AI Engine Dashboard</span>
                   <span className="">v1.0.0</span>
                 </div>
               </a>
@@ -63,29 +75,46 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       <SidebarContent>
         <SidebarGroup>
           <SidebarMenu>
-            {data.navMain.map((item) => (
-              <SidebarMenuItem key={item.title}>
-                <SidebarMenuButton asChild isActive={pathname === item.url}>
-                  <a href={item.url} className="font-medium">
-                    {item.title}
-                  </a>
-                </SidebarMenuButton>
-                {item.items?.length ? (
-                  <SidebarMenuSub>
-                    {item.items.map((subItem) => (
-                      <SidebarMenuSubItem key={subItem.title}>
-                        <SidebarMenuSubButton asChild isActive={pathname === subItem.url}>
-                          <a href={subItem.url}>{subItem.title}</a>
-                        </SidebarMenuSubButton>
-                      </SidebarMenuSubItem>
-                    ))}
-                  </SidebarMenuSub>
-                ) : null}
-              </SidebarMenuItem>
-            ))}
+            {data.navMain.map((item) => {
+              const isMainActive = pathname === item.url;
+              const isChildActive = item.items?.some(subItem => pathname === subItem.url);
+              const shouldShowChildren = isMainActive || isChildActive;
+              
+              return (
+                <SidebarMenuItem key={item.title}>
+                  <SidebarMenuButton asChild isActive={isMainActive || isChildActive}>
+                    <a href={item.url} className="font-medium">
+                      {item.icon && <item.icon className="size-4" />}
+                      {item.title}
+                    </a>
+                  </SidebarMenuButton>
+                  {item.items?.length && shouldShowChildren ? (
+                    <SidebarMenuSub>
+                      {item.items.map((subItem) => (
+                        <SidebarMenuSubItem key={subItem.title}>
+                          <SidebarMenuSubButton
+                            asChild
+                            isActive={pathname === subItem.url}
+                          >
+                            <a href={subItem.url}>{subItem.title}</a>
+                          </SidebarMenuSubButton>
+                        </SidebarMenuSubItem>
+                      ))}
+                    </SidebarMenuSub>
+                  ) : null}
+                </SidebarMenuItem>
+              );
+            })}
           </SidebarMenu>
         </SidebarGroup>
       </SidebarContent>
+      <SidebarFooter>
+        <SidebarMenu>
+          <SidebarMenuItem>
+            <LogoutButton />
+          </SidebarMenuItem>
+        </SidebarMenu>
+      </SidebarFooter>
       <SidebarRail />
     </Sidebar>
   );

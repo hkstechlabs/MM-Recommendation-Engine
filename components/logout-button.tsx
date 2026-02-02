@@ -1,8 +1,9 @@
 'use client'
 
 import { createClient } from '@/lib/supabase/client'
-import { Button } from '@/components/ui/button'
 import { useRouter } from 'next/navigation'
+import { LogOut } from 'lucide-react'
+import { SidebarMenuButton } from '@/components/ui/sidebar'
 
 export function LogoutButton() {
   const router = useRouter()
@@ -13,5 +14,10 @@ export function LogoutButton() {
     router.push('/auth/login')
   }
 
-  return <Button onClick={logout}>Logout</Button>
+  return (
+    <SidebarMenuButton onClick={logout} className="text-muted-foreground hover:text-foreground">
+      <LogOut className="size-4" />
+      <span>Logout</span>
+    </SidebarMenuButton>
+  )
 }
