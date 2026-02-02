@@ -58,7 +58,7 @@ interface SyncStats {
   errors: number
 }
 
-class MMSyncService {
+class MMSyncServiceWithUpsert {
   private stats: SyncStats
 
   constructor() {
@@ -415,11 +415,11 @@ class MMSyncService {
 }
 
 // Export for use as module
-export default MMSyncService
+export default MMSyncServiceWithUpsert
 
 // Run if executed directly
 if (require.main === module) {
-  const syncService = new MMSyncService()
+  const syncService = new MMSyncServiceWithUpsert()
   syncService.sync().catch(error => {
     console.error('🔥 MM sync failed:', error)
     process.exit(1)

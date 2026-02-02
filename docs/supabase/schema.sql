@@ -34,13 +34,15 @@ CREATE TABLE public.products (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
   created_at timestamp with time zone NOT NULL DEFAULT now(),
   title text,
+  image_id bigint null,
   vendor text,
   product_type text,
   product_created_at timestamp without time zone,
   tags text[],
   status text,
   product_id bigint,
-  CONSTRAINT products_pkey PRIMARY KEY (id)
+  CONSTRAINT products_pkey PRIMARY KEY (id),
+  CONSTRAINT products_product_id_unique UNIQUE (product_id)
 );
 
 -- Table 4: Variants (depends on products)
@@ -67,7 +69,8 @@ CREATE TABLE public.variants (
   old_inventory_quantity integer,
   image_id bigint,
   CONSTRAINT variants_pkey PRIMARY KEY (id),
-  CONSTRAINT variants_product_id_fkey FOREIGN KEY (product_id) REFERENCES public.products(id) ON DELETE CASCADE
+  CONSTRAINT variants_product_id_fkey FOREIGN KEY (product_id) REFERENCES public.products(id) ON DELETE CASCADE,
+  CONSTRAINT variants_variant_id_unique UNIQUE (variant_id)
 );
 
 -- Table 5: Scraped Data (depends on all other tables)
@@ -90,6 +93,8 @@ CREATE TABLE public.scraped_data (
 
 -- Indexes for better query performance
 CREATE INDEX idx_variants_product_id ON public.variants(product_id);
+CREATE INDEX idx_products_product_id ON public.products(product_id);
+CREATE INDEX idx_variants_variant_id ON public.variants(variant_id);
 CREATE INDEX idx_scraped_data_variant_id ON public.scraped_data(variant_id);
 CREATE INDEX idx_scraped_data_product_id ON public.scraped_data(product_id);
 CREATE INDEX idx_scraped_data_execution_id ON public.scraped_data(execution_id);
