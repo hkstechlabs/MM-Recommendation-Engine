@@ -1,27 +1,17 @@
 #!/usr/bin/env tsx
 
-/**
+/*
  * Competitor Sync Cron Job
  * 
  * This script is designed to be run as a cron job for automated competitor data syncing.
  * It includes comprehensive logging, error handling, and notification capabilities.
  * 
  * Usage:
- *   # Run all scrapers
- *   tsx scripts/competitor-sync-cron.ts
- * 
- *   # Run specific scraper
- *   tsx scripts/competitor-sync-cron.ts reebelo
- * 
- * Cron examples:
- *   # Every 6 hours
- *   0 */6 * * * cd /path/to/project && npm run competitor-sync >> logs/competitor-sync.log 2>&1
- * 
- *   # Daily at 2 AM
- *   0 2 * * * cd /path/to/project && npm run competitor-sync >> logs/competitor-sync.log 2>&1
+ *   Run all scrapers: tsx scripts/competitor-sync-cron.ts
+ *   Run specific scraper: tsx scripts/competitor-sync-cron.ts reebelo
  */
 
-import { writeFileSync, appendFileSync, existsSync, mkdirSync } from 'fs'
+import { appendFileSync, existsSync, mkdirSync } from 'fs'
 import { join } from 'path'
 import CompetitorSyncService from './competitor-sync'
 
