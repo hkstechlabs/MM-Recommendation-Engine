@@ -7,9 +7,9 @@ interface GreenGadgetsVariant {
   title: string
   price: string
   sku: string
-  option1: string // storage
-  option2: string // color
-  option3: string // condition
+  option1: string 
+  option2: string 
+  option3: string
   compare_at_price: string | null
   available: boolean
 }
