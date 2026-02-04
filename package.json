@@ -11,7 +11,19 @@
     "mm-sync-retry": "tsx scripts/mm-sync-with-retry.ts",
     "test-connection": "tsx scripts/test-connection.ts",
     "check-env": "tsx scripts/check-env.ts",
-    "debug-supabase": "tsx scripts/debug-supabase.ts"
+    "debug-supabase": "tsx scripts/debug-supabase.ts",
+    "competitor-sync": "tsx scripts/competitor-sync.ts",
+    "sync-reebelo": "tsx scripts/competitor-sync.ts scraper reebelo",
+    "sync-greengadgets": "tsx scripts/competitor-sync.ts scraper greengadgets",
+    "sync-all-competitors": "tsx scripts/competitor-sync.ts all",
+    "competitor-stats": "tsx scripts/competitor-sync.ts stats",
+    "competitor-cron": "tsx scripts/competitor-sync-cron.ts",
+    "competitor-health": "tsx scripts/competitor-sync-cron.ts health",
+    "test-competitor-sync": "tsx scripts/test-competitor-sync.ts",
+    "setup-competitor-stats": "tsx scripts/setup-competitor-stats.ts",
+    "simple-reebelo-test": "tsx scripts/simple-reebelo-test.ts",
+    "ensure-schema": "tsx scripts/ensure-schema.ts",
+    "test-reebelo-limited": "tsx scripts/test-reebelo-limited.ts"
   },
   "dependencies": {
     "@radix-ui/react-dialog": "^1.1.15",
@@ -22,6 +34,7 @@
     "@radix-ui/react-tooltip": "^1.2.8",
     "@supabase/ssr": "^0.8.0",
     "@supabase/supabase-js": "^2.93.3",
+    "axios": "^1.13.4",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "dotenv": "^16.6.1",
