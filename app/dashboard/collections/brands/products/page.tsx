@@ -86,7 +86,14 @@ export default function ProductsPage() {
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [selectedVariant, setSelectedVariant] = useState<Variant | null>(null);
   const [isVariantsDialogOpen, setIsVariantsDialogOpen] = useState(false);
-  const [isVariantDetailsDialogOpen, setIsVariantDetailsDialogOpen] = useState(false);
+  const [currentView, setCurrentView] = useState<'variants' | 'details'>('variants');
+  
+  // Variant filtering and sorting states
+  const [variantSearchTerm, setVariantSearchTerm] = useState("");
+  const [variantSortBy, setVariantSortBy] = useState("name");
+  const [colorFilter, setColorFilter] = useState("all");
+  const [conditionFilter, setConditionFilter] = useState("all");
+  const [stockFilter, setStockFilter] = useState("all");
   const itemsPerPage = 10;
   
   const router = useRouter();
@@ -117,14 +124,84 @@ export default function ProductsPage() {
   const handleProductClick = (product: Product) => {
     trackEvent('click', product.title);
     setSelectedProduct(product);
+    setSelectedVariant(null);
+    setCurrentView('variants');
+    // Reset filters when opening new product
+    setVariantSearchTerm("");
+    setVariantSortBy("name");
+    setColorFilter("all");
+    setConditionFilter("all");
+    setStockFilter("all");
     setIsVariantsDialogOpen(true);
   };
 
-  // Handle variant click - show variant details
+  // Filter and sort variants
+  const filteredAndSortedVariants = useMemo(() => {
+    if (!selectedProduct) return [];
+    
+    let filtered = selectedProduct.variants.filter(variant => {
+      // Search filter
+      const matchesSearch = variant.title.toLowerCase().includes(variantSearchTerm.toLowerCase()) ||
+                           variant.sku.toLowerCase().includes(variantSearchTerm.toLowerCase());
+      
+      // Color filter
+      const matchesColor = colorFilter === "all" || variant.color === colorFilter;
+      
+      // Condition filter
+      const matchesCondition = conditionFilter === "all" || variant.condition === conditionFilter;
+      
+      // Stock filter
+      const matchesStock = stockFilter === "all" || 
+                          (stockFilter === "in-stock" && variant.inventory_quantity > 0) ||
+                          (stockFilter === "out-of-stock" && variant.inventory_quantity === 0);
+      
+      return matchesSearch && matchesColor && matchesCondition && matchesStock;
+    });
+
+    // Sort variants
+    filtered.sort((a, b) => {
+      switch (variantSortBy) {
+        case "name":
+          return a.title.localeCompare(b.title);
+        case "name-desc":
+          return b.title.localeCompare(a.title);
+        case "price":
+          return parseFloat(a.price) - parseFloat(b.price);
+        case "price-desc":
+          return parseFloat(b.price) - parseFloat(a.price);
+        case "stock":
+          return b.inventory_quantity - a.inventory_quantity;
+        case "storage":
+          return (a.storage || "").localeCompare(b.storage || "");
+        default:
+          return 0;
+      }
+    });
+
+    return filtered;
+  }, [selectedProduct, variantSearchTerm, variantSortBy, colorFilter, conditionFilter, stockFilter]);
+
+  // Get unique filter options
+  const getFilterOptions = useMemo(() => {
+    if (!selectedProduct) return { colors: [], conditions: [] };
+    
+    const colors = [...new Set(selectedProduct.variants.map(v => v.color).filter(Boolean))];
+    const conditions = [...new Set(selectedProduct.variants.map(v => v.condition))];
+    
+    return { colors, conditions };
+  }, [selectedProduct]);
+
+  // Handle variant click - show variant details in same dialog
   const handleVariantClick = (variant: Variant) => {
     trackEvent('click', `${selectedProduct?.title} - ${variant.title}`);
     setSelectedVariant(variant);
-    setIsVariantDetailsDialogOpen(true);
+    setCurrentView('details');
+  };
+
+  // Handle back to variants
+  const handleBackToVariants = () => {
+    setSelectedVariant(null);
+    setCurrentView('variants');
   };
 
   // Handle view product page
@@ -511,222 +588,364 @@ export default function ProductsPage() {
           )}
         </div>
 
-        {/* Variants Dialog */}
+        {/* Unified Dialog with Navigation */}
         <Dialog open={isVariantsDialogOpen} onOpenChange={setIsVariantsDialogOpen}>
           <DialogContent 
             className="w-[95vw] !max-w-[95vw] max-h-[90vh] overflow-hidden flex flex-col sm:!max-w-[95vw]"
           >
             <DialogHeader className="flex-shrink-0">
               <DialogTitle className="flex items-center gap-2">
-                <Package className="h-5 w-5" />
-                {selectedProduct?.title} - Variants
+                {currentView === 'variants' ? (
+                  <>
+                    <Package className="h-5 w-5" />
+                    {selectedProduct?.title} - Variants
+                  </>
+                ) : (
+                  <>
+                    <Info className="h-5 w-5" />
+                    {selectedVariant?.title}
+                  </>
+                )}
               </DialogTitle>
               <DialogDescription>
-                Choose from {selectedProduct?.variants.length} available variants
+                {currentView === 'variants' 
+                  ? `Choose from ${selectedProduct?.variants.length} available variants`
+                  : 'Complete details for this product variant'
+                }
               </DialogDescription>
+              {currentView === 'details' && (
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={handleBackToVariants}
+                  className="w-fit mt-2"
+                >
+                  ← Back to Variants
+                </Button>
+              )}
             </DialogHeader>
             
             <div className="flex-1 overflow-y-auto pr-2">
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 2xl:grid-cols-10 gap-3 py-4">
-                {selectedProduct?.variants.map((variant) => (
-                  <Card 
-                    key={variant.id} 
-                    className="cursor-pointer hover:shadow-md transition-all duration-200 hover:border-primary/50 h-fit"
-                    onClick={() => handleVariantClick(variant)}
-                  >
-                    <CardContent className="p-3">
-                      <div className="space-y-2">
-                        {/* Header with title and stock status */}
-                        <div className="space-y-1">
-                          <h4 className="font-semibold text-xs leading-tight line-clamp-2">{variant.title}</h4>
-                          <Badge 
-                            variant={variant.inventory_quantity > 0 ? "default" : "destructive"}
-                            className="text-xs w-full justify-center"
-                          >
-                            {variant.inventory_quantity > 0 ? "In Stock" : "Out of Stock"}
-                          </Badge>
-                        </div>
-                        
-                        {/* Price - prominent display */}
-                        <div className="text-center py-2 bg-primary/5 rounded-lg">
-                          <div className="text-xs text-muted-foreground">Price</div>
-                          <div className="text-lg font-bold text-primary">${variant.price}</div>
-                        </div>
-                        
-                        {/* Specifications - compact */}
-                        <div className="space-y-1 text-xs">
-                          {variant.storage && (
-                            <div className="flex justify-between items-center p-1 bg-muted/30 rounded">
-                              <span className="text-muted-foreground">Storage</span>
-                              <span className="font-medium">{variant.storage}</span>
-                            </div>
-                          )}
-                          
-                          {variant.color && (
-                            <div className="flex justify-between items-center p-1 bg-muted/30 rounded">
-                              <span className="text-muted-foreground">Color</span>
-                              <span className="font-medium">{variant.color}</span>
-                            </div>
-                          )}
-                          
-                          <div className="flex justify-between items-center p-1 bg-muted/30 rounded">
-                            <span className="text-muted-foreground">Condition</span>
-                            <span className="font-medium">{variant.condition}</span>
-                          </div>
-                          
-                          <div className="flex justify-between items-center p-1 bg-muted/30 rounded">
-                            <span className="text-muted-foreground">Stock</span>
-                            <span className="font-medium">{variant.inventory_quantity}</span>
-                          </div>
-                        </div>
-                        
-                        {/* SKU */}
-                        {variant.sku && (
-                          <div className="pt-1 border-t text-center">
-                            <div className="text-xs text-muted-foreground">SKU</div>
-                            <div className="text-xs font-mono truncate">{variant.sku}</div>
-                          </div>
-                        )}
-                        
-                        {/* Action button */}
-                        <Button 
-                          size="sm" 
-                          className="w-full text-xs h-8"
-                          variant={variant.inventory_quantity > 0 ? "default" : "secondary"}
-                          disabled={variant.inventory_quantity === 0}
-                        >
-                          <Eye className="h-3 w-3 mr-1" />
-                          View Details
-                        </Button>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            </div>
-          </DialogContent>
-        </Dialog>
-
-        {/* Variant Details Dialog */}
-        <Dialog open={isVariantDetailsDialogOpen} onOpenChange={setIsVariantDetailsDialogOpen}>
-          <DialogContent className="max-w-3xl max-h-[90vh] overflow-hidden flex flex-col">
-            <DialogHeader className="flex-shrink-0">
-              <DialogTitle className="flex items-center gap-2">
-                <Info className="h-5 w-5" />
-                {selectedVariant?.title}
-              </DialogTitle>
-              <DialogDescription>
-                Complete details for this product variant
-              </DialogDescription>
-            </DialogHeader>
-            
-            {selectedVariant && (
-              <div className="flex-1 overflow-y-auto pr-2">
-                <div className="space-y-6 py-4">
-                  {/* Price and availability */}
-                  <div className="text-center p-6 bg-gradient-to-r from-primary/5 to-primary/10 rounded-lg">
-                    <div className="text-3xl font-bold text-primary mb-2">${selectedVariant.price}</div>
-                    <Badge 
-                      variant={selectedVariant.inventory_quantity > 0 ? "default" : "destructive"}
-                      className="text-sm"
-                    >
-                      {selectedVariant.inventory_quantity > 0 
-                        ? `${selectedVariant.inventory_quantity} in stock` 
-                        : "Out of stock"
-                      }
-                    </Badge>
-                  </div>
-                  
-                  {/* Specifications */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                      <h3 className="font-semibold mb-3 text-lg">Specifications</h3>
-                      <div className="space-y-3">
-                        {selectedVariant.storage && (
-                          <div className="flex justify-between items-center p-3 bg-muted/30 rounded-lg">
-                            <span className="text-muted-foreground">Storage</span>
-                            <span className="font-semibold">{selectedVariant.storage}</span>
-                          </div>
-                        )}
-                        
-                        {selectedVariant.color && (
-                          <div className="flex justify-between items-center p-3 bg-muted/30 rounded-lg">
-                            <span className="text-muted-foreground">Color</span>
-                            <span className="font-semibold">{selectedVariant.color}</span>
-                          </div>
-                        )}
-                        
-                        <div className="flex justify-between items-center p-3 bg-muted/30 rounded-lg">
-                          <span className="text-muted-foreground">Condition</span>
-                          <span className="font-semibold">{selectedVariant.condition}</span>
-                        </div>
-                        
-                        {selectedVariant.sku && (
-                          <div className="flex justify-between items-center p-3 bg-muted/30 rounded-lg">
-                            <span className="text-muted-foreground">SKU</span>
-                            <span className="font-mono text-sm">{selectedVariant.sku}</span>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                    
-                    <div>
-                      <h3 className="font-semibold mb-3 text-lg">Product Information</h3>
-                      <div className="space-y-3">
-                        <div className="flex justify-between items-center p-3 bg-muted/30 rounded-lg">
-                          <span className="text-muted-foreground">Product</span>
-                          <span className="font-semibold text-right">{selectedProduct?.title}</span>
-                        </div>
-                        
-                        <div className="flex justify-between items-center p-3 bg-muted/30 rounded-lg">
-                          <span className="text-muted-foreground">Brand</span>
-                          <span className="font-semibold">{selectedProduct?.vendor}</span>
-                        </div>
-                        
-                        <div className="flex justify-between items-center p-3 bg-muted/30 rounded-lg">
-                          <span className="text-muted-foreground">Category</span>
-                          <span className="font-semibold">{selectedProduct?.product_type}</span>
-                        </div>
+              {currentView === 'variants' ? (
+                <div className="space-y-4">
+                  {/* Search and Filters Section */}
+                  <div className="sticky top-0 z-10 bg-background/95 backdrop-blur-sm border-b pb-3">
+                    <div className="space-y-3">
+                      {/* Search Bar */}
+                      <div className="relative">
+                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+                        <Input
+                          type="text"
+                          placeholder="Search variants by name or SKU..."
+                          value={variantSearchTerm}
+                          onChange={(e) => setVariantSearchTerm(e.target.value)}
+                          className="pl-10 h-11 bg-background border-2 focus:border-primary/50 transition-colors text-sm"
+                        />
                       </div>
                       
-                      {selectedProduct?.tags && selectedProduct.tags.length > 0 && (
-                        <div className="mt-4">
-                          <h4 className="font-semibold mb-2">Tags</h4>
-                          <div className="flex flex-wrap gap-2">
-                            {selectedProduct.tags.slice(0, 6).map((tag) => (
-                              <Badge key={tag} variant="outline" className="text-xs">
-                                {tag}
-                              </Badge>
-                            ))}
-                          </div>
+                      {/* Filters Row - Left Aligned with Better Width */}
+                      <div className="flex flex-wrap gap-3 items-start">
+                        {/* Sort Dropdown */}
+                        <div className="w-48">
+                          <Select value={variantSortBy} onValueChange={setVariantSortBy}>
+                            <SelectTrigger className="h-11 bg-background border-2 hover:border-primary/30 transition-colors text-sm w-full">
+                              <ArrowUpDown className="h-4 w-4 mr-2 text-muted-foreground flex-shrink-0" />
+                              <SelectValue placeholder="Sort by" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="name">Name (A-Z)</SelectItem>
+                              <SelectItem value="name-desc">Name (Z-A)</SelectItem>
+                              <SelectItem value="price">Price (Low-High)</SelectItem>
+                              <SelectItem value="price-desc">Price (High-Low)</SelectItem>
+                              <SelectItem value="stock">Stock (High-Low)</SelectItem>
+                              <SelectItem value="storage">Storage</SelectItem>
+                            </SelectContent>
+                          </Select>
                         </div>
-                      )}
+                        
+                        {/* Color Filter */}
+                        {getFilterOptions.colors.length > 0 && (
+                          <div className="w-40">
+                            <Select value={colorFilter} onValueChange={setColorFilter}>
+                              <SelectTrigger className="h-11 bg-background border-2 hover:border-primary/30 transition-colors text-sm w-full">
+                                <div className="w-3 h-3 rounded-full bg-gradient-to-r from-red-400 to-blue-400 mr-2 flex-shrink-0"></div>
+                                <SelectValue placeholder="Color" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="all">All Colors</SelectItem>
+                                {getFilterOptions.colors.map(color => (
+                                  <SelectItem key={color} value={color}>{color}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        )}
+                        
+                        {/* Condition Filter */}
+                        <div className="w-44">
+                          <Select value={conditionFilter} onValueChange={setConditionFilter}>
+                            <SelectTrigger className="h-11 bg-background border-2 hover:border-primary/30 transition-colors text-sm w-full">
+                              <Badge variant="outline" className="w-3 h-3 p-0 mr-2 flex-shrink-0"></Badge>
+                              <SelectValue placeholder="Condition" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="all">All Conditions</SelectItem>
+                              {getFilterOptions.conditions.map(condition => (
+                                <SelectItem key={condition} value={condition}>{condition}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        
+                        {/* Stock Filter */}
+                        <div className="w-36">
+                          <Select value={stockFilter} onValueChange={setStockFilter}>
+                            <SelectTrigger className="h-11 bg-background border-2 hover:border-primary/30 transition-colors text-sm w-full">
+                              <Package className="h-4 w-4 mr-2 text-muted-foreground flex-shrink-0" />
+                              <SelectValue placeholder="Stock" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="all">All Stock</SelectItem>
+                              <SelectItem value="in-stock">In Stock</SelectItem>
+                              <SelectItem value="out-of-stock">Out of Stock</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        
+                        {/* Clear Filters Button - Inline */}
+                        {(variantSearchTerm || colorFilter !== "all" || conditionFilter !== "all" || stockFilter !== "all") && (
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            onClick={() => {
+                              setVariantSearchTerm("");
+                              setColorFilter("all");
+                              setConditionFilter("all");
+                              setStockFilter("all");
+                            }}
+                            className="h-11 px-4 text-sm hover:bg-muted/80 text-muted-foreground hover:text-foreground ml-2"
+                          >
+                            Clear All
+                          </Button>
+                        )}
+                      </div>
+                      
+                      {/* Results Summary - Simplified */}
+                      <div className="text-sm text-muted-foreground pt-1">
+                        <span className="font-medium text-foreground">{filteredAndSortedVariants.length}</span> of <span className="font-medium text-foreground">{selectedProduct?.variants.length}</span> variants
+                      </div>
                     </div>
                   </div>
                   
-                  {/* Action buttons */}
-                  <div className="flex gap-3 pt-4 border-t">
-                    <Button 
-                      className="flex-1"
-                      size="lg"
-                      onClick={handleViewProductPage}
+                  {/* Variants Grid */}
+                  {filteredAndSortedVariants.length > 0 ? (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 pb-4">
+                      {filteredAndSortedVariants.map((variant) => (
+                    <Card 
+                      key={variant.id} 
+                      className="group hover:shadow-lg transition-all duration-300 hover:border-primary/30 h-fit bg-card/50 backdrop-blur-sm border-2"
                     >
-                      <ExternalLink className="h-4 w-4 mr-2" />
-                      View Product Page
-                    </Button>
+                      <CardContent className="p-4">
+                        <div className="space-y-3">
+                          {/* Header with title and stock status */}
+                          <div className="space-y-2">
+                            <h4 className="font-semibold text-sm leading-tight line-clamp-2 group-hover:text-primary transition-colors">{variant.title}</h4>
+                            <Badge 
+                              variant={variant.inventory_quantity > 0 ? "default" : "destructive"}
+                              className="text-xs w-full justify-center py-1"
+                            >
+                              {variant.inventory_quantity > 0 ? "In Stock" : "Out of Stock"}
+                            </Badge>
+                          </div>
+                          
+                          {/* Price - prominent display */}
+                          <div className="text-center py-3 bg-gradient-to-r from-primary/5 to-primary/10 rounded-lg border border-primary/10">
+                            <div className="text-xs text-muted-foreground mb-1">Price</div>
+                            <div className="text-xl font-bold text-primary">${variant.price}</div>
+                          </div>
+                          
+                          {/* Specifications - compact */}
+                          <div className="space-y-2 text-xs">
+                            {variant.storage && (
+                              <div className="flex justify-between items-center p-2 bg-muted/40 rounded-md border">
+                                <span className="text-muted-foreground font-medium">Storage</span>
+                                <span className="font-semibold">{variant.storage}</span>
+                              </div>
+                            )}
+                            
+                            {variant.color && (
+                              <div className="flex justify-between items-center p-2 bg-muted/40 rounded-md border">
+                                <span className="text-muted-foreground font-medium">Color</span>
+                                <span className="font-semibold">{variant.color}</span>
+                              </div>
+                            )}
+                            
+                            <div className="flex justify-between items-center p-2 bg-muted/40 rounded-md border">
+                              <span className="text-muted-foreground font-medium">Condition</span>
+                              <span className="font-semibold">{variant.condition}</span>
+                            </div>
+                            
+                            <div className="flex justify-between items-center p-2 bg-muted/40 rounded-md border">
+                              <span className="text-muted-foreground font-medium">Stock</span>
+                              <span className="font-semibold">{variant.inventory_quantity}</span>
+                            </div>
+                          </div>
+                          
+                          {/* SKU */}
+                          {variant.sku && (
+                            <div className="pt-2 border-t text-center">
+                              <div className="text-xs text-muted-foreground mb-1">SKU</div>
+                              <div className="text-xs font-mono bg-muted/30 px-2 py-1 rounded truncate">{variant.sku}</div>
+                            </div>
+                          )}
+                          
+                          {/* Action button */}
+                          <Button 
+                            size="sm" 
+                            className={`w-full text-sm h-10 font-medium transition-all duration-200 ${
+                              variant.inventory_quantity > 0 
+                                ? "hover:bg-primary/90 hover:text-primary-foreground hover:shadow-md" 
+                                : "disabled:cursor-not-allowed disabled:hover:bg-secondary"
+                            }`}
+                            variant={variant.inventory_quantity > 0 ? "default" : "secondary"}
+                            disabled={variant.inventory_quantity === 0}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleVariantClick(variant);
+                            }}
+                          >
+                            <Eye className="h-4 w-4 mr-2" />
+                            View Details
+                          </Button>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-16 px-4">
+                  <div className="max-w-md mx-auto">
+                    <Package className="h-16 w-16 text-muted-foreground/50 mx-auto mb-6" />
+                    <h3 className="text-xl font-semibold mb-3 text-foreground">No variants found</h3>
+                    <p className="text-muted-foreground mb-6 leading-relaxed">
+                      No variants match your current search and filter criteria. Try adjusting your filters or search terms.
+                    </p>
                     <Button 
-                      variant="outline" 
-                      className="flex-1" 
-                      size="lg"
-                      onClick={() => setIsVariantDetailsDialogOpen(false)}
+                      onClick={() => {
+                        setVariantSearchTerm("");
+                        setColorFilter("all");
+                        setConditionFilter("all");
+                        setStockFilter("all");
+                      }} 
+                      variant="outline"
+                      className="h-10 px-6"
                     >
-                      <Eye className="h-4 w-4 mr-2" />
-                      Back to Variants
+                      Clear All Filters
                     </Button>
                   </div>
                 </div>
-              </div>
-            )}
+              )}
+            </div>
+              ) : (
+                // Variant Details View
+                selectedVariant && (
+                  <div className="space-y-6 py-4">
+                    {/* Price and availability */}
+                    <div className="text-center p-6 bg-gradient-to-r from-primary/5 to-primary/10 rounded-lg">
+                      <div className="text-3xl font-bold text-primary mb-2">${selectedVariant.price}</div>
+                      <Badge 
+                        variant={selectedVariant.inventory_quantity > 0 ? "default" : "destructive"}
+                        className="text-sm"
+                      >
+                        {selectedVariant.inventory_quantity > 0 
+                          ? `${selectedVariant.inventory_quantity} in stock` 
+                          : "Out of stock"
+                        }
+                      </Badge>
+                    </div>
+                    
+                    {/* Specifications */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div>
+                        <h3 className="font-semibold mb-3 text-lg">Specifications</h3>
+                        <div className="space-y-3">
+                          {selectedVariant.storage && (
+                            <div className="flex justify-between items-center p-3 bg-muted/30 rounded-lg">
+                              <span className="text-muted-foreground">Storage</span>
+                              <span className="font-semibold">{selectedVariant.storage}</span>
+                            </div>
+                          )}
+                          
+                          {selectedVariant.color && (
+                            <div className="flex justify-between items-center p-3 bg-muted/30 rounded-lg">
+                              <span className="text-muted-foreground">Color</span>
+                              <span className="font-semibold">{selectedVariant.color}</span>
+                            </div>
+                          )}
+                          
+                          <div className="flex justify-between items-center p-3 bg-muted/30 rounded-lg">
+                            <span className="text-muted-foreground">Condition</span>
+                            <span className="font-semibold">{selectedVariant.condition}</span>
+                          </div>
+                          
+                          {selectedVariant.sku && (
+                            <div className="flex justify-between items-center p-3 bg-muted/30 rounded-lg">
+                              <span className="text-muted-foreground">SKU</span>
+                              <span className="font-mono text-sm">{selectedVariant.sku}</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                      
+                      <div>
+                        <h3 className="font-semibold mb-3 text-lg">Product Information</h3>
+                        <div className="space-y-3">
+                          <div className="flex justify-between items-center p-3 bg-muted/30 rounded-lg">
+                            <span className="text-muted-foreground">Product</span>
+                            <span className="font-semibold text-right">{selectedProduct?.title}</span>
+                          </div>
+                          
+                          <div className="flex justify-between items-center p-3 bg-muted/30 rounded-lg">
+                            <span className="text-muted-foreground">Brand</span>
+                            <span className="font-semibold">{selectedProduct?.vendor}</span>
+                          </div>
+                          
+                          <div className="flex justify-between items-center p-3 bg-muted/30 rounded-lg">
+                            <span className="text-muted-foreground">Category</span>
+                            <span className="font-semibold">{selectedProduct?.product_type}</span>
+                          </div>
+                          
+                          {selectedProduct?.tags && selectedProduct.tags.length > 0 && (
+                            <div className="p-3 bg-muted/30 rounded-lg">
+                              <div className="text-muted-foreground mb-2">Tags</div>
+                              <div className="flex flex-wrap gap-1">
+                                {selectedProduct.tags.map((tag, index) => (
+                                  <Badge key={index} variant="secondary" className="text-xs">
+                                    {tag}
+                                  </Badge>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                    
+                    {/* Action buttons */}
+                    <div className="flex gap-3 pt-4 border-t">
+                      <Button 
+                        onClick={handleViewProductPage}
+                        className="flex-1 cursor-pointer"
+                        disabled={!selectedVariant}
+                      >
+                        <ExternalLink className="h-4 w-4 mr-2" />
+                        View Product Page
+                      </Button>
+                    </div>
+                  </div>
+                )
+              )}
+            </div>
           </DialogContent>
         </Dialog>
       </SidebarInset>
