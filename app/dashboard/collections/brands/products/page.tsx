@@ -66,6 +66,13 @@ interface Variant {
   inventory_quantity: number;
 }
 
+interface CompetitorPrice {
+  competitor_name: string;
+  price: string;
+  stock: number;
+  created_at: string;
+}
+
 interface Product {
   id: number;
   title: string;
@@ -85,6 +92,8 @@ export default function ProductsPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [selectedVariant, setSelectedVariant] = useState<Variant | null>(null);
+  const [competitorPrices, setCompetitorPrices] = useState<CompetitorPrice[]>([]);
+  const [loadingCompetitorPrices, setLoadingCompetitorPrices] = useState(false);
   const [isVariantsDialogOpen, setIsVariantsDialogOpen] = useState(false);
   const [currentView, setCurrentView] = useState<'variants' | 'details'>('variants');
   
@@ -192,10 +201,27 @@ export default function ProductsPage() {
   }, [selectedProduct]);
 
   // Handle variant click - show variant details in same dialog
-  const handleVariantClick = (variant: Variant) => {
+  const handleVariantClick = async (variant: Variant) => {
     trackEvent('click', `${selectedProduct?.title} - ${variant.title}`);
     setSelectedVariant(variant);
     setCurrentView('details');
+    
+    // Fetch competitor prices for this variant
+    setLoadingCompetitorPrices(true);
+    try {
+      const response = await fetch(`/api/competitor-prices?variantId=${variant.variant_id}`);
+      if (response.ok) {
+        const data = await response.json();
+        setCompetitorPrices(data.competitorPrices || []);
+      } else {
+        setCompetitorPrices([]);
+      }
+    } catch (error) {
+      console.error('Error fetching competitor prices:', error);
+      setCompetitorPrices([]);
+    } finally {
+      setLoadingCompetitorPrices(false);
+    }
   };
 
   // Handle back to variants
@@ -917,18 +943,89 @@ export default function ProductsPage() {
                           
                           {selectedProduct?.tags && selectedProduct.tags.length > 0 && (
                             <div className="p-3 bg-muted/30 rounded-lg">
-                              <div className="text-muted-foreground mb-2">Tags</div>
-                              <div className="flex flex-wrap gap-1">
-                                {selectedProduct.tags.map((tag, index) => (
-                                  <Badge key={index} variant="secondary" className="text-xs">
-                                    {tag}
-                                  </Badge>
-                                ))}
+                              <div className="flex items-start gap-2">
+                                <span className="text-muted-foreground flex-shrink-0 pt-0.5">Tags</span>
+                                <div className="flex flex-wrap gap-1">
+                                  {selectedProduct.tags.map((tag, index) => (
+                                    <Badge key={index} variant="secondary" className="text-xs">
+                                      {tag}
+                                    </Badge>
+                                  ))}
+                                </div>
                               </div>
                             </div>
                           )}
                         </div>
                       </div>
+                    </div>
+                    
+                    {/* Competitor Prices Section */}
+                    <div>
+                      <h3 className="font-semibold mb-3 text-lg flex items-center gap-2">
+                        <DollarSign className="h-5 w-5 text-primary" />
+                        Competitor Prices
+                      </h3>
+                      {loadingCompetitorPrices ? (
+                        <div className="p-6 bg-muted/30 rounded-lg text-center">
+                          <div className="animate-spin rounded-full h-8 w-8 border-2 border-primary/30 border-t-primary mx-auto mb-2"></div>
+                          <p className="text-sm text-muted-foreground">Loading competitor prices...</p>
+                        </div>
+                      ) : competitorPrices.length > 0 ? (
+                        <div className="space-y-3">
+                          {competitorPrices.map((competitor, index) => (
+                            <div 
+                              key={index} 
+                              className="p-4 bg-gradient-to-r from-muted/40 to-muted/20 rounded-lg border border-muted hover:border-primary/30 transition-colors"
+                            >
+                              <div className="flex justify-between items-start mb-2">
+                                <div>
+                                  <h4 className="font-semibold text-base">{competitor.competitor_name}</h4>
+                                  <p className="text-xs text-muted-foreground mt-1">
+                                    Updated: {new Date(competitor.created_at).toLocaleDateString()}
+                                  </p>
+                                </div>
+                                <div className="text-right">
+                                  <div className="text-2xl font-bold text-primary">${competitor.price}</div>
+                                  <Badge 
+                                    variant={competitor.stock > 0 ? "default" : "destructive"}
+                                    className="text-xs mt-1"
+                                  >
+                                    {competitor.stock > 0 ? `${competitor.stock} in stock` : "Out of stock"}
+                                  </Badge>
+                                </div>
+                              </div>
+                              
+                              {/* Price comparison */}
+                              {selectedVariant && (
+                                <div className="mt-3 pt-3 border-t border-muted">
+                                  <div className="flex items-center justify-between text-sm">
+                                    <span className="text-muted-foreground">Price difference:</span>
+                                    <span className={`font-semibold ${
+                                      parseFloat(competitor.price) < parseFloat(selectedVariant.price)
+                                        ? 'text-red-500'
+                                        : parseFloat(competitor.price) > parseFloat(selectedVariant.price)
+                                        ? 'text-green-500'
+                                        : 'text-muted-foreground'
+                                    }`}>
+                                      {parseFloat(competitor.price) < parseFloat(selectedVariant.price)
+                                        ? `$${(parseFloat(selectedVariant.price) - parseFloat(competitor.price)).toFixed(2)} cheaper`
+                                        : parseFloat(competitor.price) > parseFloat(selectedVariant.price)
+                                        ? `$${(parseFloat(competitor.price) - parseFloat(selectedVariant.price)).toFixed(2)} more expensive`
+                                        : 'Same price'
+                                      }
+                                    </span>
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="p-6 bg-muted/30 rounded-lg text-center">
+                          <Package className="h-12 w-12 text-muted-foreground/50 mx-auto mb-3" />
+                          <p className="text-sm text-muted-foreground">No competitor pricing data available</p>
+                        </div>
+                      )}
                     </div>
                     
                     {/* Action buttons */}

@@ -76,15 +76,31 @@ const BrandLogo = ({
       'fairphone': 'fairphone.com',
       'tcl': 'tcl.com',
       'honor': 'hihonor.com',
-      'blackberry': 'blackberry.com'
+      'blackberry': 'blackberry.com',
+      'armourmax': 'armourmax.com',
+      'astro': 'astro.com',
+      'baseus': 'baseus.com',
+      'beats': 'beatsbydre.com',
+      'belkin': 'belkin.com',
+      'bodyguardz': 'bodyguardz.com',
+      'breville': 'breville.com',
+      'cheerble': 'cheerble.com',
+      'coteelci': 'coteelci.com',
+      'cradlepoint': 'cradlepoint.com',
+      'cygnett': 'cygnett.com',
+      'dbramante': 'dbramante1928.com',
+      'dji': 'dji.com',
+      'dogness': 'dogness.com',
+      'efm': 'efmnetwork.com',
+      'ekinops': 'ekinops.com'
     };
     
     const domain = brandDomains[cleanName] || `${cleanName}.com`;
     
     return [
       `https://logo.clearbit.com/${domain}`,
-      `https://img.logo.dev/${domain}?token=pk_-LogoDevAPIKey-`, // Would need real API key
-      `https://logo.uplead.com/${domain}`,
+      `https://www.google.com/s2/favicons?domain=${domain}&sz=128`,
+      `https://api.brandfetch.io/v2/brands/${domain}`,
     ];
   };
 
@@ -116,7 +132,7 @@ const BrandLogo = ({
   if (imageError && currentLogoIndex >= logoSources.length - 1) {
     // Fallback to initials after all sources fail
     return (
-      <div className={`${size} border border-primary/20 group-hover:border-primary/40 transition-all duration-300 rounded-lg bg-gradient-to-br from-primary/10 to-primary/5 group-hover:from-primary/20 group-hover:to-primary/10 flex items-center justify-center group-hover:scale-110 ${className}`}>
+      <div className={`${size} border border-primary/20 group-hover:border-primary/40 transition-all duration-300 rounded-lg bg-gradient-to-br from-primary/10 to-primary/5 group-hover:from-primary/20 group-hover:to-primary/10 flex items-center justify-center flex-shrink-0 ${className}`}>
         <span className={`text-primary font-bold ${textSize} group-hover:text-primary transition-colors`}>
           {brandName.charAt(0).toUpperCase()}
         </span>
@@ -125,17 +141,17 @@ const BrandLogo = ({
   }
 
   return (
-    <div className={`${size} border border-primary/20 group-hover:border-primary/40 transition-all duration-300 rounded-lg bg-white group-hover:scale-110 flex items-center justify-center overflow-hidden ${className}`}>
+    <div className={`${size} border border-primary/20 group-hover:border-primary/40 transition-all duration-300 rounded-lg bg-white flex items-center justify-center overflow-hidden flex-shrink-0 relative ${className}`}>
       <img
         src={currentLogoUrl}
         alt={`${brandName} logo`}
-        className={`w-full h-full object-contain p-1 transition-opacity duration-300 ${imageLoaded ? 'opacity-100' : 'opacity-0'}`}
+        className={`max-w-full max-h-full object-contain p-2 transition-opacity duration-300 ${imageLoaded ? 'opacity-100' : 'opacity-0'}`}
         onError={handleImageError}
         onLoad={handleImageLoad}
         loading="lazy"
       />
       {!imageLoaded && !imageError && (
-        <div className="w-full h-full bg-gradient-to-br from-primary/10 to-primary/5 flex items-center justify-center">
+        <div className="absolute inset-0 bg-gradient-to-br from-primary/10 to-primary/5 flex items-center justify-center">
           <span className={`text-primary font-bold ${textSize}`}>
             {brandName.charAt(0).toUpperCase()}
           </span>
@@ -180,7 +196,7 @@ const TrendingBrandLogo = ({
   if (!logoUrl || imageError) {
     // Fallback to initials with orange theme
     return (
-      <div className={`${size} bg-gradient-to-br from-orange-500/20 to-red-500/20 rounded-lg flex items-center justify-center flex-shrink-0 border border-orange-200/50 group-hover:border-orange-300/70 transition-all duration-300 group-hover:scale-110 ${className}`}>
+      <div className={`${size} bg-gradient-to-br from-orange-500/20 to-red-500/20 rounded-lg flex items-center justify-center flex-shrink-0 border border-orange-200/50 group-hover:border-orange-300/70 transition-all duration-300 ${className}`}>
         <span className={`${textSize} font-bold text-orange-600 group-hover:text-orange-700 transition-colors`}>
           {brandName.charAt(0).toUpperCase()}
         </span>
@@ -189,17 +205,17 @@ const TrendingBrandLogo = ({
   }
 
   return (
-    <div className={`${size} border border-orange-200/50 group-hover:border-orange-300/70 transition-all duration-300 rounded-lg bg-white group-hover:scale-110 flex items-center justify-center overflow-hidden ${className}`}>
+    <div className={`${size} border border-orange-200/50 group-hover:border-orange-300/70 transition-all duration-300 rounded-lg bg-white flex items-center justify-center overflow-hidden flex-shrink-0 relative ${className}`}>
       <img
         src={logoUrl}
         alt={`${brandName} logo`}
-        className={`w-full h-full object-contain p-1 transition-opacity duration-300 ${imageLoaded ? 'opacity-100' : 'opacity-0'}`}
+        className={`max-w-full max-h-full object-contain p-2 transition-opacity duration-300 ${imageLoaded ? 'opacity-100' : 'opacity-0'}`}
         onError={handleImageError}
         onLoad={handleImageLoad}
         loading="lazy"
       />
       {!imageLoaded && !imageError && (
-        <div className="w-full h-full bg-gradient-to-br from-orange-500/20 to-red-500/20 flex items-center justify-center">
+        <div className="absolute inset-0 bg-gradient-to-br from-orange-500/20 to-red-500/20 flex items-center justify-center">
           <span className={`text-orange-600 font-bold ${textSize}`}>
             {brandName.charAt(0).toUpperCase()}
           </span>
@@ -270,14 +286,30 @@ export default function BrandsPage() {
       'fairphone': 'fairphone.com',
       'tcl': 'tcl.com',
       'honor': 'hihonor.com',
-      'blackberry': 'blackberry.com'
+      'blackberry': 'blackberry.com',
+      'armourmax': 'armourmax.com',
+      'astro': 'astro.com',
+      'baseus': 'baseus.com',
+      'beats': 'beatsbydre.com',
+      'belkin': 'belkin.com',
+      'bodyguardz': 'bodyguardz.com',
+      'breville': 'breville.com',
+      'cheerble': 'cheerble.com',
+      'coteelci': 'coteelci.com',
+      'cradlepoint': 'cradlepoint.com',
+      'cygnett': 'cygnett.com',
+      'dbramante': 'dbramante1928.com',
+      'dji': 'dji.com',
+      'dogness': 'dogness.com',
+      'efm': 'efmnetwork.com',
+      'ekinops': 'ekinops.com'
     };
     
     // Get the appropriate domain
     const domain = brandDomains[cleanName] || `${cleanName}.com`;
     
-    // Use Clearbit logo service (most reliable for company logos)
-    return `https://logo.clearbit.com/${domain}`;
+    // Use Google's favicon service as it's more reliable and doesn't have rate limits
+    return `https://www.google.com/s2/favicons?domain=${domain}&sz=128`;
   };
 
   // Function to track UI events
@@ -635,18 +667,18 @@ export default function BrandsPage() {
                         
                         <CardContent className="p-2 h-full flex flex-col justify-center items-center relative text-center">
                           {/* Brand Logo */}
-                          <div className="mb-2">
+                          <div className="mb-2 flex items-center justify-center">
                             <TrendingBrandLogo 
                               brandName={item.metadata}
                               logoUrl={getBrandLogoUrl(item.metadata)}
-                              size="w-8 h-8"
+                              size="w-10 h-10"
                               textSize="text-sm"
                             />
                           </div>
                           
                           {/* Brand Name and Stats */}
-                          <div className="space-y-1">
-                            <h3 className="text-xs font-semibold group-hover:text-orange-700 transition-colors line-clamp-1 leading-tight">
+                          <div className="space-y-1 w-full px-1">
+                            <h3 className="text-xs font-semibold group-hover:text-orange-700 transition-colors line-clamp-2 leading-tight">
                               {item.metadata
                                 .split(' ')
                                 .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
@@ -714,18 +746,18 @@ export default function BrandsPage() {
                   
                   <CardContent className="p-2 h-full flex flex-col justify-center items-center relative text-center">
                     {/* Brand Logo */}
-                    <div className="mb-2">
+                    <div className="mb-2 flex items-center justify-center">
                       <BrandLogo 
                         brandName={brand.title}
                         logoUrl={brand.logoUrl}
-                        size="h-8 w-8"
-                        textSize="text-sm"
+                        size="w-12 h-12"
+                        textSize="text-base"
                       />
                     </div>
                     
                     {/* Brand Name */}
-                    <div>
-                      <h3 className="text-xs font-semibold group-hover:text-primary transition-colors line-clamp-1 leading-tight">
+                    <div className="w-full px-1">
+                      <h3 className="text-xs font-semibold group-hover:text-primary transition-colors line-clamp-2 leading-tight">
                         {brand.title}
                       </h3>
                     </div>
