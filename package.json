@@ -23,7 +23,12 @@
     "setup-competitor-stats": "tsx scripts/setup-competitor-stats.ts",
     "simple-reebelo-test": "tsx scripts/simple-reebelo-test.ts",
     "ensure-schema": "tsx scripts/ensure-schema.ts",
-    "test-reebelo-limited": "tsx scripts/test-reebelo-limited.ts"
+    "test-reebelo-limited": "tsx scripts/test-reebelo-limited.ts",
+    "setup-order-metrics": "tsx scripts/setup-order-metrics.ts",
+    "order-metrics-sync": "tsx scripts/order-metrics-sync.ts",
+    "view-metrics": "tsx scripts/view-metrics.ts",
+    "test-order-metrics": "tsx scripts/test-order-metrics.ts",
+    "fix-line-items-constraint": "tsx scripts/fix-line-items-constraint.ts"
   },
   "dependencies": {
     "@radix-ui/react-dialog": "^1.1.15",
